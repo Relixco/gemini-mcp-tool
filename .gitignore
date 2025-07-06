@@ -9,6 +9,13 @@ dist/
 .idea/
 .npmignore
 
+# NPM package files
+*.tgz
+
 # VitePress
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+
+# local development
+.augment/
+GEMINI.md
