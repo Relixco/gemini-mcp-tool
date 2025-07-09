@@ -9,6 +9,9 @@ dist/
 .idea/
 .npmignore
 
+# NPM package files
+*.tgz
+
 # Project Management (Private)
 .project-management/
 .metrics/
@@ -24,3 +27,7 @@ metrics-data/
 # VitePress
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+
+# local development
+.augment/
+GEMINI.md
