@@ -43,6 +43,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 /** Location of the pid file that stores the last server's pid + cwd */
 const PID_FILE = path.join(os.tmpdir(), 'gemini-mcp-server.pid.json');
@@ -119,22 +120,69 @@ if (existing && isProcessAlive(existing.pid)) {
 }
 
 // ---------------------------------------------------------------------------------
-// 3. Spawn the real server (dist/index.js) in the desired cwd
+// 3. Detect MCP usage and handle accordingly
 // ---------------------------------------------------------------------------------
 
-const serverEntry = path.join(path.dirname(new URL(import.meta.url).pathname), 'index.js');
+/**
+ * Detect if we're being called by an MCP client.
+ * MCP clients expect direct stdio communication, so we should run the server
+ * in-process rather than spawning a child process.
+ */
+function isMCPEnvironment(): boolean {
+  // Check if stdin is connected AND we're not in a terminal
+  // MCP clients connect via stdio but terminals also have stdin
+  return !process.stdin.isTTY && !process.stdout.isTTY;
+}
 
-const child = spawn(process.execPath, [serverEntry, ...forwardArgs], {
-  cwd: desiredCwd,
-  stdio: 'inherit',
-  env: { ...process.env, GEMINI_MCP_LAUNCHED: '1' },
-});
+const serverEntry = path.join(path.dirname(fileURLToPath(import.meta.url)), 'index.js');
 
-writePidFile({ pid: child.pid ?? -1, cwd: desiredCwd });
+if (isMCPEnvironment()) {
+  // MCP environment: Run server directly in this process
+  console.warn('[gemini-mcp] Detected MCP environment, running server directly');
 
-child.on('exit', (code, signal) => {
-  try { fs.unlinkSync(PID_FILE); } catch { /* ignore */ }
-  if (signal) process.exit(1);
-  process.exit(code ?? 1);
-});
+  // Set environment variables for the server
+  process.env.GEMINI_MCP_LAUNCHED = '1';
+
+  // Change to desired working directory
+  if (desiredCwd !== process.cwd()) {
+    process.chdir(desiredCwd);
+  }
+
+  // Import and run the server directly
+  import(pathToFileURL(serverEntry).href).catch((error) => {
+    console.error('[gemini-mcp] Failed to start server:', error);
+    process.exit(1);
+  });
+
+} else {
+  // CLI environment: Use launcher pattern with child process
+  console.warn('[gemini-mcp] Detected CLI environment, using launcher pattern');
+
+  // Try original approach first (process.execPath), fallback to shell if needed
+  let child;
+  try {
+    child = spawn(process.execPath, [serverEntry, ...forwardArgs], {
+      cwd: desiredCwd,
+      stdio: 'inherit',
+      env: { ...process.env, GEMINI_MCP_LAUNCHED: '1' },
+    });
+  } catch (error) {
+    // Fallback to shell-based execution for compatibility
+    console.warn('[gemini-mcp] Fallback to shell-based node execution');
+    child = spawn('node', [serverEntry, ...forwardArgs], {
+      cwd: desiredCwd,
+      stdio: 'inherit',
+      shell: true,
+      env: { ...process.env, GEMINI_MCP_LAUNCHED: '1' },
+    });
+  }
+
+  writePidFile({ pid: child.pid ?? -1, cwd: desiredCwd });
+
+  child.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+    try { fs.unlinkSync(PID_FILE); } catch { /* ignore */ }
+    if (signal) process.exit(1);
+    process.exit(code ?? 1);
+  });
+}
 

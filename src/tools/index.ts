@@ -2,7 +2,7 @@
 import { promises as fs } from "fs";
 import { ToolBehavior } from "../types/tool-behavior.js";
 import path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +40,7 @@ class ToolLoader {
       for (const file of files) {
         if (file.endsWith(".tool.js") || file.endsWith(".tool.ts")) {
           try {
-            const module = await import(path.join(toolsDir, file));
+            const module = await import(pathToFileURL(path.join(toolsDir, file)).href);
             if (module.default && this.isValidTool(module.default)) {
               // Attach exported behavior to tool if not already present
               if (module.behavior && !module.default.behavior) {

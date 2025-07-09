@@ -124,7 +124,12 @@ REMEMBER: You can only SUGGEST changes in the format above. You cannot execute a
     args.push("-s");
   }
   args.push("-p", finalPrompt);
-  
+
+  // Debug: Check environment variable availability
+  console.warn(`[Gemini MCP] About to execute Gemini CLI. GEMINI_API_KEY available: ${!!process.env.GEMINI_API_KEY}`);
+  console.warn(`[Gemini MCP] Working directory: ${process.cwd()}`);
+  console.warn(`[Gemini MCP] Command: gemini ${args.join(' ')}`);
+
   // Use unified runShell wrapper
   const exec = await runShell("gemini", args);
   if (exec.ok) {

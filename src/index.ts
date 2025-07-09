@@ -20,6 +20,7 @@ import { parseNotifications } from './utils/notification-parser.js';
 import { transformStructuredResponse } from './utils/response-transformer.js';
 import { guardRails } from './utils/guard-rails.js';
 import { toolEnhancer } from './utils/tool-enhancer.js';
+import { ensureGeminiAuthentication } from './utils/env-detector.js';
 
 // Create server instance
 const server = new Server(
@@ -624,10 +625,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   // Only log initialization messages if not launched via MCP
   const isMCPLaunched = process.env.GEMINI_MCP_LAUNCHED === '1';
-  
+
   if (!isMCPLaunched) {
     console.warn("{start gemini-mcp-tool");
   }
+
+  // Ensure Gemini CLI authentication is available
+  await ensureGeminiAuthentication();
 
   // Load all tools
   await toolLoader.loadTools();

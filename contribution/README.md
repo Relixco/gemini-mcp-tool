@@ -1,42 +1,45 @@
-> !
-> Please be aware that this system is W.I.P, Check back soon :)
-> !
+# Cross-Platform Contribution Workflow 💡
 
-# Got an Idea? Just Build It! 💡
+**Focus on your idea, not the platform complexity.**
 
-**Focus on your idea, not the GitHub complexity.**
-
-## TL;DR: 3 Commands
+## TL;DR: Cross-Platform Commands
 
 ```bash
-./contribution/setup.sh        # Once
-./contribution/branch.sh my-idea
+npm install && npm run build    # Once
+npm run contrib:branch          # Get branch guidance
 # Build your idea here
-./contribution/submit.sh       # Done!
+npm run contrib:test           # Test your changes
+npm run contrib:submit         # Get submission guidance
 ```
 
-## You Have an Idea → We Handle the Rest
+## Cross-Platform npm Scripts
 
-**Your job:** Build something awesome  
-**Our job:** Git, GitHub, formatting, testing, pull requests
+**Your job:** Build something awesome
+**Our job:** Cross-platform compatibility, testing, guidance
 
-## Templates to Get Started Fast
+### Available Scripts
 
-```bash
-./contribution/create.sh
-# Choose: new-tool | bug-fix | docs
-# Get a template, start coding immediately
-```
+- `npm run contrib:setup` - Setup guidance
+- `npm run contrib:format` - Code formatting guidance
+- `npm run contrib:test` - Run tests and linting
+- `npm run contrib:branch` - Branch creation guidance
+- `npm run contrib:submit` - PR submission guidance
 
-## Made a Mistake?
+## Migration from Shell Scripts ✅
 
-```bash
-./contribution/undo.sh
-# Rollback ???
-```
+**Old shell scripts replaced with cross-platform npm scripts:**
 
-## Never Used GitHub?
+- ❌ `./contribution/setup.sh` → ✅ `npm install && npm run build`
+- ❌ `./contribution/format.sh` → ✅ `npm run contrib:format`
+- ❌ `./contribution/test.sh` → ✅ `npm run contrib:test`
+- ❌ `./contribution/branch.sh` → ✅ `npm run contrib:branch`
+- ❌ `./contribution/submit.sh` → ✅ `npm run contrib:submit`
 
-Perfect! These tools were built for you. No knowledge required.
+## Benefits
+
+- ✅ **Windows Native**: No WSL required
+- ✅ **Cross-Platform**: Works on Windows, macOS, Linux
+- ✅ **Standard**: Uses npm ecosystem tools
+- ✅ **Maintainable**: No shell script dependencies
 
 ---

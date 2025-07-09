@@ -38,16 +38,55 @@ function filterNodeWarnings(text: string): string {
  * @param opts Spawn options (e.g., cwd, env)
  * @returns ExecResult indicating success or failure
  */
+/**
+ * Escapes a string for safe use in shell commands
+ */
+function escapeShellArg(arg: string): string {
+  if (process.platform === 'win32') {
+    // Windows shell escaping: wrap in quotes and escape internal quotes
+    return `"${arg.replace(/"/g, '""')}"`;
+  } else {
+    // Unix shell escaping: wrap in single quotes and escape single quotes
+    return `'${arg.replace(/'/g, "'\"'\"'")}'`;
+  }
+}
+
 export async function runShell(
   command: string,
   args: string[] = [],
   opts?: SpawnOptionsWithoutStdio
 ): Promise<ExecResult> {
   const finalArgs = command === 'git' ? ['--no-pager', ...args] : args;
+  const useShell = process.platform === 'win32';
+
   return new Promise(resolve => {
-    const child = spawn(command, finalArgs, {
-      shell: false,
+    let spawnCommand = command;
+    let spawnArgs = finalArgs;
+
+    if (useShell) {
+      // When using shell, we need to construct the full command string
+      // and escape arguments properly
+      const escapedArgs = finalArgs.map(escapeShellArg).join(' ');
+      spawnCommand = `${command} ${escapedArgs}`;
+      spawnArgs = [];
+    }
+
+    // Ensure critical environment variables are available for Gemini CLI
+    const enhancedEnv = {
+      ...process.env,
+      ...(opts?.env || {})
+    };
+
+    // Special handling for Gemini CLI environment variable inheritance bug
+    if (command === 'gemini' && !enhancedEnv.GEMINI_API_KEY) {
+      console.warn(`[Gemini MCP] WARNING: GEMINI_API_KEY not found in environment for Gemini CLI execution`);
+      console.warn(`[Gemini MCP] This is likely due to Gemini CLI issue #1560 - environment variable inheritance bug`);
+    }
+
+    const child = spawn(spawnCommand, spawnArgs, {
+      shell: useShell,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: enhancedEnv,
       ...opts,
     });
 
