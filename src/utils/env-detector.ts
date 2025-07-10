@@ -14,11 +14,10 @@ interface GeminiAuthConfig {
   [key: string]: any;
 }
 
-// Simple logging utility
+// Simple logging utility - enabled by default for authentication debugging
 function logDebug(message: string): void {
-  if (process.env.GEMINI_MCP_DEBUG === '1') {
-    console.warn(`[Gemini MCP] ${message}`);
-  }
+  // Always log authentication-related messages for debugging MCP compatibility
+  console.warn(`[Gemini MCP Auth] ${message}`);
 }
 
 /**
@@ -78,8 +77,8 @@ async function checkGeminiAuth(): Promise<{ hasAuth: boolean; authType?: string;
 }
 
 /**
- * Simplified cross-platform environment variable detection
- * Focuses on process.env and basic fallbacks without complex process spawning
+ * Enhanced cross-platform environment variable detection
+ * Attempts multiple methods to detect environment variables for MCP compatibility
  */
 async function readSystemEnvironmentVariable(varName: string): Promise<string | null> {
   // First check if it's already in process.env
@@ -87,10 +86,93 @@ async function readSystemEnvironmentVariable(varName: string): Promise<string | 
     return process.env[varName] || null;
   }
 
-  // For Windows MCP compatibility, we rely on process.env inheritance
-  // Complex PowerShell spawning removed for simplicity and reliability
-  logDebug(`${varName} not found in process.env - relying on Gemini CLI settings or .env files`);
-  return null;
+  logDebug(`${varName} not found in process.env, attempting system detection...`);
+
+  // Try to read from system environment using platform-specific methods
+  try {
+    if (process.platform === 'win32') {
+      // On Windows, try reading from registry or using PowerShell
+      const { spawn } = await import('child_process');
+      return new Promise((resolve) => {
+        const child = spawn('powershell', ['-Command', `[Environment]::GetEnvironmentVariable('${varName}', 'User')`], {
+          stdio: ['ignore', 'pipe', 'ignore'],
+          windowsHide: true
+        });
+
+        let output = '';
+        child.stdout?.on('data', (data) => {
+          output += data.toString().trim();
+        });
+
+        child.on('close', () => {
+          const result = output.trim();
+          if (result && result !== 'null' && result !== '') {
+            logDebug(`✅ Found ${varName} in Windows user environment`);
+            resolve(result);
+          } else {
+            // Try machine-level environment
+            const machineChild = spawn('powershell', ['-Command', `[Environment]::GetEnvironmentVariable('${varName}', 'Machine')`], {
+              stdio: ['ignore', 'pipe', 'ignore'],
+              windowsHide: true
+            });
+
+            let machineOutput = '';
+            machineChild.stdout?.on('data', (data) => {
+              machineOutput += data.toString().trim();
+            });
+
+            machineChild.on('close', () => {
+              const machineResult = machineOutput.trim();
+              if (machineResult && machineResult !== 'null' && machineResult !== '') {
+                logDebug(`✅ Found ${varName} in Windows machine environment`);
+                resolve(machineResult);
+              } else {
+                resolve(null);
+              }
+            });
+          }
+        });
+
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          child.kill();
+          resolve(null);
+        }, 2000);
+      });
+    } else {
+      // On Unix-like systems, try reading from shell environment
+      const { spawn } = await import('child_process');
+      return new Promise((resolve) => {
+        const child = spawn('sh', ['-c', `echo $${varName}`], {
+          stdio: ['ignore', 'pipe', 'ignore']
+        });
+
+        let output = '';
+        child.stdout?.on('data', (data) => {
+          output += data.toString().trim();
+        });
+
+        child.on('close', () => {
+          const result = output.trim();
+          if (result && result !== '') {
+            logDebug(`✅ Found ${varName} in Unix shell environment`);
+            resolve(result);
+          } else {
+            resolve(null);
+          }
+        });
+
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          child.kill();
+          resolve(null);
+        }, 2000);
+      });
+    }
+  } catch (error) {
+    logDebug(`Failed to read system environment variable ${varName}: ${error}`);
+    return null;
+  }
 }
 
 // Removed complex PowerShell environment variable detection
