@@ -9,10 +9,22 @@ dist/
 .idea/
 .npmignore
 
+# NPM package files
+*.tgz
+
+# Project Management (Private)
+.project-management/
+.metrics/
+.roadmap/
+.analytics/
 
 # Docs Site
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+
+# local development
+.augment/
+GEMINI.md
 
 # Desktop Extension build artifacts
 *.dxt
